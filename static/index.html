@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0d1017">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mood Reader | Customer review sentiment</title>
+  <meta name="description" content="Paste a customer review and see whether it reads as positive, neutral or negative.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%232FB67C'/%3E%3Ccircle cx='35' cy='42' r='5' fill='%23172033'/%3E%3Ccircle cx='65' cy='42' r='5' fill='%23172033'/%3E%3Cpath d='M32 62 Q50 80 68 62' stroke='%23172033' stroke-width='6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Sans:wght@400..650&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-mood="idle">
+  <div class="aurora" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
+
+  <div class="shell">
+    <header class="top">
+      <a class="brand" href="/" aria-label="Mood Reader home">
+        <svg viewBox="0 0 40 40" width="30" height="30" aria-hidden="true">
+          <circle cx="20" cy="20" r="18" fill="currentColor"/>
+          <circle cx="14" cy="17" r="2.4" fill="#10131b"/>
+          <circle cx="26" cy="17" r="2.4" fill="#10131b"/>
+          <path d="M13 25 Q20 31 27 25" stroke="#10131b" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        </svg>
+        <span>Mood Reader</span>
+      </a>
+      <a class="docs-link" href="/docs">API docs</a>
+    </header>
+
+    <section class="intro">
+      <h1>Read the mood behind every review.</h1>
+      <p>Paste any customer review. The model tells you if it sounds positive, neutral or negative in a moment.</p>
+    </section>
+
+    <main class="grid">
+      <!-- Composer -->
+      <section class="panel composer" aria-labelledby="composer-title">
+        <form id="review-form" novalidate>
+          <div class="field-head">
+            <label id="composer-title" for="review">Customer review</label>
+            <span class="count" id="count" aria-live="off">0 / 10000</span>
+          </div>
+
+          <textarea id="review" name="review" maxlength="10000" rows="8"
+            placeholder="Paste a customer review here..."
+            aria-describedby="hint"></textarea>
+
+          <div class="samples" role="group" aria-label="Sample reviews">
+            <span class="samples-label">Try a sample</span>
+            <button type="button" class="chip" data-sample="love">Loved it</button>
+            <button type="button" class="chip" data-sample="meh">It's okay</button>
+            <button type="button" class="chip" data-sample="bad">Never again</button>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="btn-primary" id="analyze" disabled>
+              <span class="spinner" aria-hidden="true"></span>
+              <span class="btn-label">Analyze review</span>
+            </button>
+            <button type="button" class="btn-ghost" id="clear">Clear</button>
+            <span class="hint" id="hint">Ctrl or Cmd + Enter to analyze</span>
+          </div>
+        </form>
+      </section>
+
+      <!-- Result -->
+      <section class="panel stage" id="stage" aria-labelledby="result-title">
+        <canvas class="fx" id="fx" aria-hidden="true"></canvas>
+        <h2 class="sr-only" id="result-title">Result</h2>
+
+        <div class="face-wrap" id="face-wrap">
+          <svg class="face" id="face" viewBox="0 0 240 240" role="img" aria-label="Face showing the detected mood">
+            <defs>
+              <radialGradient id="shine" cx="34%" cy="26%" r="78%">
+                <stop offset="0" stop-color="#fff" stop-opacity="0.5"/>
+                <stop offset="0.55" stop-color="#fff" stop-opacity="0"/>
+              </radialGradient>
+              <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0.55" stop-color="#000" stop-opacity="0"/>
+                <stop offset="1" stop-color="#000" stop-opacity="0.22"/>
+              </linearGradient>
+            </defs>
+            <circle class="head" cx="120" cy="120" r="110"/>
+            <circle cx="120" cy="120" r="110" fill="url(#shade)"/>
+            <circle cx="120" cy="120" r="110" fill="url(#shine)"/>
+            <circle class="cheek" cx="64" cy="140" r="15"/>
+            <circle class="cheek" cx="176" cy="140" r="15"/>
+            <g class="brows">
+              <line x1="66" y1="82" x2="104" y2="70"/>
+              <line x1="136" y1="70" x2="174" y2="82"/>
+            </g>
+            <g class="eyes-track" id="eyes-track">
+              <g class="eyes">
+                <ellipse class="eye" cx="86" cy="104" rx="9" ry="13"/>
+                <ellipse class="eye" cx="154" cy="104" rx="9" ry="13"/>
+              </g>
+            </g>
+            <path class="mouth" id="mouth" d=""/>
+          </svg>
+        </div>
+
+        <div class="verdict" aria-live="polite" aria-atomic="true">
+          <p class="word" id="word">Ready</p>
+          <p class="note" id="note">Write or paste a review, then press Analyze review.</p>
+        </div>
+
+        <div class="gauge" aria-hidden="true">
+          <div class="gauge-track"><span class="gauge-thumb" id="gauge-thumb"></span></div>
+          <div class="gauge-labels"><span>Negative</span><span>Neutral</span><span>Positive</span></div>
+        </div>
+
+        <p class="error" id="error" role="alert" hidden></p>
+      </section>
+    </main>
+
+    <section class="history" id="history" hidden>
+      <div class="history-head">
+        <h2>Recent reviews</h2>
+        <button type="button" class="btn-ghost small" id="clear-history">Clear history</button>
+      </div>
+      <ul id="history-list"></ul>
+    </section>
+
+    <footer class="foot">
+      <p>Predictions come from a machine learning model and can be wrong, especially on sarcasm and mixed reviews.</p>
+    </footer>
+  </div>
+
+  <script src="/static/script.js" defer></script>
+</body>
+</html>
